@@ -1,0 +1,66 @@
+# api_key ไม่จำเป็นต้องกรอกในไฟล์นี้ก็ได้ (TimesheetSync.exe จะเปิดหน้า login ให้กรอกเองตอนเปิดโปรแกรม
+# ถ้าติ๊ก "จำไว้" ตอน login โปรแกรมจะบันทึก url/api_key กลับมาที่ไฟล์นี้ให้อัตโนมัติ)
+# sync_timesheet.py (CLI สำหรับ cron/Task Scheduler) ยังต้องมี url + api_key ในไฟล์นี้เสมอ เพราะไม่มีหน้า login
+openproject:
+  url: "https://your-openproject-instance.com"
+  api_key: ""
+
+# แม็ปชื่อกิจกรรมในคอลัมน์ activity ของ Excel -> id ของ activity ใน OpenProject
+# TimesheetSync.exe: ไม่บังคับ ใช้เป็นค่าตั้งต้นของ dropdown "กิจกรรม" ในตารางเท่านั้น
+#   (แอปดึงรายชื่อ activity จริงจากเซิร์ฟเวอร์มาให้เลือกเองอยู่แล้ว ชื่อที่ตรงกันจะถูกเลือกให้อัตโนมัติ)
+# sync_timesheet.py (CLI): บังคับ เพราะไม่มีหน้าจอให้เลือก
+activity_mapping:
+  "Development": 1
+  "Meeting": 2
+
+# แม็ปอีเมลผู้ใช้ -> user id ใน OpenProject (ใช้ตอนบันทึกชั่วโมงแทนคนอื่น)
+# ถ้าไม่แม็ป ระบบจะบันทึกชั่วโมงในนามของเจ้าของ api_key แทน
+user_mapping:
+  "someone@company.com": 12
+
+excel:
+  sheet_name: "Sheet1"
+  columns:
+    date: "date"
+    work_package_id: "wp_id"
+    hours: "hours"
+    activity: "activity"
+    comment: "comment"
+    user_email: "user_email"
+    synced: "synced"
+    sync_note: "sync_note"
+    # 3 คอลัมน์นี้ไม่มีในไฟล์ก็ได้ (ถือว่าใช้งานเดิมทุกแถว) — ใส่มาเมื่ออยากให้ Excel สั่งสร้างงานใหม่ได้เอง
+    wp_mode: "wp_mode"          # existing | new (เว้นว่างได้ แอปเดาจาก wp_id / new_subject)
+    new_subject: "new_subject"  # ชื่อ Work Package ที่จะสร้าง (ใช้เมื่อ wp_mode = new)
+    new_project: "new_project"  # โปรเจกต์ที่จะสร้างงานใหม่ ใส่ชื่อเต็มหรือ id ก็ได้
+
+# แท็บ "สรุปงาน" — อ่าน commit จาก git หรือรับสรุป .md ที่มีอยู่แล้ว ให้ Claude แตกเป็น task
+# ทั้งหมดนี้ไม่จำเป็นต้องกรอกเอง แท็บบันทึกกลับให้อัตโนมัติเมื่อเพิ่ม/แก้ repo ในหน้าจอ
+worklog:
+  # โฟลเดอร์ปลายทางของไฟล์ .xlsx และ .md ที่แท็บนี้สร้าง
+  # เว้นว่าง = โฟลเดอร์เดียวกับไฟล์ล่าสุดที่เปิด แล้วค่อย fallback เป็น ~/Documents
+  output_dir: "D:/taskopenproject"
+  hours_per_day: 8            # ชั่วโมงเป้าหมายต่อวัน ใช้ตรวจว่าแตก task ครบไหม
+  default_activity: "Normal"  # activity ที่ใส่ให้ทุกแถวที่สร้างจากแท็บนี้
+  authors: []                 # กรอง commit ของใคร เว้นว่าง = git config user.email ของแต่ละ repo
+  claude_path: ""             # เว้นว่าง = หา claude จาก PATH (ต้องติดตั้ง Claude Code ไว้)
+  # โมเดลที่ใช้แตก task (เลือกจาก dropdown ในแท็บได้) — เว้นว่างหรือไม่ใส่ = claude-sonnet-5
+  # ใส่ "cli" ถ้าอยากปล่อยให้ claude CLI เลือกโมเดลเอง
+  claude_model: "claude-sonnet-5"
+  # ความลึกในการคิดของโมเดล: low / medium / high / xhigh / max — ตัวแปรใหญ่สุดของเวลาที่ใช้
+  # low พอสำหรับงานแตก task (วัดแล้วเร็วขึ้นเกือบเท่าตัวโดยผลลัพธ์ยังครบชั่วโมงและอ้างไฟล์ถูก)
+  claude_effort: "low"
+  # true = ใส่ชุดธงที่ตัดของที่ไม่ได้ใช้ออก (--safe-mode, --tools "", --system-prompt สั้นๆ,
+  # --strict-mcp-config, --no-session-persistence) วัดแล้ว input token ลด ~95% เร็วขึ้น ~2.8 เท่า
+  # ตั้งเป็น false ถ้า claude บนเครื่องเป็นเวอร์ชันเก่าจนไม่รู้จักธงเหล่านี้
+  claude_fast: true
+  # ไฟล์สรุป .md ที่เลือกล่าสุดในโหมด "จากไฟล์ .md" — ใช้เป็นโฟลเดอร์ตั้งต้นของ file dialog
+  # เท่านั้น แอปไม่ได้โหลดเนื้อไฟล์นี้ให้อัตโนมัติตอนเปิด (แอปเขียนค่านี้เองเมื่อเลือกไฟล์)
+  last_summary_file: ""
+  repos:
+    - path: "D:/work/rtaf_api"
+      # เก็บเป็น id ไม่ใช่ชื่อ เพราะแอปจับคู่ชื่อโปรเจกต์แบบตรงเป๊ะเท่านั้น
+      # ผิดตัวเดียวคือคอลัมน์โปรเจกต์จะว่างโดยไม่มี error ให้เห็น
+      project_id: 42
+      project_name: "CGmailRTAF"   # เก็บไว้แสดงตอนยังไม่ได้ login เท่านั้น
+      enabled: true

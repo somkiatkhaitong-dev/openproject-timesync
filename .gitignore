@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Build outputs
+build/
+dist/
+installer_output/
+
+# Local config / secrets
+config.yaml
+logs/
+*.log
+
+# Personal timesheet data (keep sample/template only)
+*.xlsx
+!timesheet_sample.xlsx
+!timesheet_template.xlsx
+~$*.xlsx
